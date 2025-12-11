@@ -1,0 +1,271 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>نموذج إدخال الأصناف</title>
+  <style>
+    :root{
+      --bg-start:#eef4fb;
+      --bg-end:#ffffff;
+      --card:#ffffff;
+      --accent:#0b63d6;
+      --danger:#d32f2f;
+      --muted:#6b7280;
+    }
+    html,body{height:100%;margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,'Noto Naskh Arabic',sans-serif;background:linear-gradient(180deg,var(--bg-start),var(--bg-end));color:#111;}
+    body::before{content:"";position:fixed;inset:0;pointer-events:none;background-image:radial-gradient(rgba(6,43,99,0.02) 1px, transparent 1px);background-size:18px 18px;opacity:0.95}
+    .app{max-width:980px;margin:18px auto;padding:18px}
+    header{display:flex;gap:8px;align-items:center;justify-content:space-between}
+    h1{font-size:18px;margin:0}
+    .card{background:linear-gradient(180deg, rgba(255,255,255,0.96), rgba(250,252,255,0.98));border-radius:12px;padding:16px;box-shadow:0 8px 30px rgba(15,30,60,0.06);border:1px solid rgba(6,43,99,0.05)}
+    table{width:100%;border-collapse:collapse;text-align:right}
+    th,td{padding:10px;border-bottom:1px solid #f0f2f5}
+    th{font-weight:700;color:var(--muted);font-size:13px}
+    input,textarea,select{width:100%;padding:8px;border:1px solid #e6e9ef;border-radius:8px;font-size:16px;box-sizing:border-box;background:#fff}
+    input:focus,textarea:focus{outline:2px solid rgba(11,99,214,0.12)}
+    .controls{display:flex;gap:8px;margin-top:8px}
+    button{padding:10px 12px;border:0;border-radius:10px;background:var(--accent);color:#fff;font-weight:600}
+    .btn-ghost{background:transparent;color:var(--accent);border:1px solid rgba(11,132,255,0.12)}
+    .btn-danger{background:var(--danger)}
+    .row-actions{display:flex;gap:6px}
+    .small{font-size:13px;padding:7px 8px}
+    .num-input{position:relative}
+    /* numeric keypad */
+    .keypad{position:fixed;left:0;right:0;bottom:0;background:#fff;border-top-left-radius:12px;border-top-right-radius:12px;padding:8px;box-shadow:0 -6px 20px rgba(0,0,0,0.12);display:none;z-index:999}
+    .keypad-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+    .key{padding:14px;border-radius:10px;background:#f1f5f9;text-align:center;font-size:20px;user-select:none}
+    .key.action{background:var(--accent);color:#fff}
+    .key.delete{background:#f8d7da;color:var(--danger)}
+    .row-empty{color:#777;text-align:center;padding:16px}
+    footer{margin-top:10px;text-align:center;color:var(--muted);font-size:13px}
+    @media(min-width:700px){
+      .app{margin-top:30px}
+      table input{font-size:15px}
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <h1>نموذج إدخال الأصناف</h1>
+      <div style="display:flex;gap:8px">
+        <button id="addRowBtn" class="small">إضافة صف</button>
+        <button id="exportBtn" class="small btn-ghost">تصدير CSV</button>
+        <button id="clearBtn" class="small btn-danger">مسح الكل</button>
+      </div>
+    </header>
+
+    <div class="card" style="margin-top:12px">
+      <table id="dataTable">
+        <thead>
+          <tr>
+            <th>اسم الصنف</th>
+            <th>الحجم /المقاس</th>
+            <th>السعر $</th>
+            <th>اسم المورد</th>
+            <th>المقدم المتفق عليه %</th>
+            <th>ملاحظات</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="tbody">
+          <tr class="row-empty"><td colspan="7">لا توجد بيانات بعد — اضغط "إضافة صف" لإدخال بيانات.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="keypad" id="keypad">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;padding:0 6px">
+        <div id="keypadLabel">لوحة الأرقام</div>
+        <div style="display:flex;gap:6px">
+          <button id="keypadDone" class="small btn-ghost" style="background:transparent">تم</button>
+        </div>
+      </div>
+      <div class="keypad-grid">
+        <div class="key">7</div>
+        <div class="key">8</div>
+        <div class="key">9</div>
+        <div class="key">4</div>
+        <div class="key">5</div>
+        <div class="key">6</div>
+        <div class="key">1</div>
+        <div class="key">2</div>
+        <div class="key">3</div>
+        <div class="key">0</div>
+        <div class="key">.</div>
+        <div class="key delete">⌫</div>
+      </div>
+    </div>
+
+    <footer>في سفاري: زر المشاركة → "إضافة إلى الشاشة الرئيسية" لتحويلها إلى تطبيق على iOS</footer>
+  </div>
+
+  <script>
+    const STORAGE_KEY = 'pos_rows_v2'
+    const tbody = document.getElementById('tbody')
+    const addRowBtn = document.getElementById('addRowBtn')
+    const exportBtn = document.getElementById('exportBtn')
+    const clearBtn = document.getElementById('clearBtn')
+
+    function loadRows(){
+      try{ const raw = localStorage.getItem(STORAGE_KEY); return raw ? JSON.parse(raw) : [] }catch(e){ return [] }
+    }
+    function saveRows(rows){ localStorage.setItem(STORAGE_KEY, JSON.stringify(rows)) }
+
+    function escapeHTML(s=''){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;') }
+
+    function render(){
+      const rows = loadRows()
+      tbody.innerHTML = ''
+      if(rows.length===0){
+        const tr = document.createElement('tr')
+        tr.className='row-empty'
+        tr.innerHTML = '<td colspan="7">لا توجد بيانات بعد — اضغط "إضافة صف" لإدخال بيانات.</td>'
+        tbody.appendChild(tr)
+        return
+      }
+      rows.forEach((r,idx)=>{
+        const tr = document.createElement('tr')
+        tr.innerHTML = `
+          <td><input data-index="${idx}" data-field="name" value="${escapeHTML(r.name)}"></td>
+          <td><input data-index="${idx}" data-field="size" value="${escapeHTML(r.size)}"></td>
+          <td class="num-input"><input inputmode="decimal" pattern="[0-9]*" data-index="${idx}" data-field="price" data-keypad="true" value="${escapeHTML(r.price)}"></td>
+          <td><input data-index="${idx}" data-field="supplier" value="${escapeHTML(r.supplier)}"></td>
+          <td class="num-input"><input inputmode="decimal" pattern="[0-9]*" data-index="${idx}" data-field="advance" data-keypad="true" value="${escapeHTML(r.advance)}"></td>
+          <td><input data-index="${idx}" data-field="notes" value="${escapeHTML(r.notes)}"></td>
+          <td class="row-actions"><button type="button" class="small btn-ghost" data-action="save" data-index="${idx}">حفظ</button><button type="button" class="small btn-danger" data-action="delete" data-index="${idx}">حذف</button></td>
+        `
+        tbody.appendChild(tr)
+      })
+    }
+
+    addRowBtn.addEventListener('click', ()=>{
+      const rows = loadRows()
+      rows.push({name:'',size:'',price:'',supplier:'',advance:'',notes:''})
+      saveRows(rows)
+      render()
+      // focus newly added first cell
+      setTimeout(()=>{
+        const last = tbody.querySelector('tr:last-child input')
+        if(last) last.focus()
+      },50)
+    })
+
+    tbody.addEventListener('click', (e)=>{
+      const btn = e.target.closest('button')
+      if(!btn) return
+      const action = btn.dataset.action
+      const idx = Number(btn.dataset.index)
+      const rows = loadRows()
+      if(action==='delete'){
+        if(!confirm('هل تريد حذف هذا الصف؟')) return
+        rows.splice(idx,1)
+        saveRows(rows)
+        render()
+      } else if(action==='save'){
+        const rowEl = btn.closest('tr')
+        const inputs = rowEl.querySelectorAll('input')
+        inputs.forEach(inp=>{
+          const field = inp.dataset.field
+          rows[idx][field] = inp.value
+        })
+        saveRows(rows)
+        render()
+      }
+    })
+
+    tbody.addEventListener('input', (e)=>{
+      const inp = e.target
+      const idx = inp.dataset.index
+      if(idx==null) return
+      const rows = loadRows()
+      rows[Number(idx)][inp.dataset.field] = inp.value
+      saveRows(rows)
+    })
+
+    // keypad logic
+    let activeInput = null
+    const keypad = document.getElementById('keypad')
+    const keypadLabel = document.getElementById('keypadLabel')
+    const keypadDone = document.getElementById('keypadDone')
+
+    document.addEventListener('click', (e)=>{
+      // if clicking an input marked for keypad, open keypad
+      const inp = e.target.closest('input')
+      if(!inp) return
+      if(inp.dataset.keypad === 'true'){
+        activeInput = inp
+        keypadLabel.textContent = inp.dataset.field === 'price' ? 'السعر $' : 'المقدم %'
+        keypad.style.display = 'block'
+        // prevent native keyboard on iOS from opening
+        if(typeof inp.setSelectionRange === 'function') inp.setSelectionRange(inp.value.length, inp.value.length)
+        e.preventDefault()
+      }
+    })
+
+    keypad.addEventListener('click', (e)=>{
+      const key = e.target.closest('.key')
+      if(!key || !activeInput) return
+      const v = activeInput.value || ''
+      const k = key.textContent
+      if(k === '⌫'){
+        activeInput.value = v.slice(0,-1)
+      } else if(k === '.'){
+        if(!v.includes('.')) activeInput.value = v + '.'
+      } else {
+        activeInput.value = v + k
+      }
+      const idx = Number(activeInput.dataset.index)
+      const rows = loadRows()
+      rows[idx][activeInput.dataset.field] = activeInput.value
+      saveRows(rows)
+    })
+
+    keypadDone.addEventListener('click', ()=>{
+      keypad.style.display = 'none'
+      activeInput = null
+    })
+
+    // close keypad on outside touch
+    document.addEventListener('touchstart', (e)=>{
+      if(!keypad.contains(e.target) && activeInput && e.target !== activeInput){
+        keypad.style.display = 'none'
+        activeInput = null
+      }
+    })
+
+    // export CSV
+    exportBtn.addEventListener('click', ()=>{
+      const rows = loadRows()
+      if(rows.length===0){ alert('لا توجد بيانات للتصدير'); return }
+      const header = ['اسم الصنف','الحجم/المقاس','السعر $','اسم المورد','المقدم المتفق عليه %','ملاحظات']
+      const csv = [header.join(',')].concat(rows.map(r=>[
+        csvSafe(r.name),csvSafe(r.size),csvSafe(r.price),csvSafe(r.supplier),csvSafe(r.advance),csvSafe(r.notes)
+      ].join(','))).join('\n')
+      const blob = new Blob(['\uFEFF' + csv], {type:'text/csv;charset=utf-8;'})
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = 'items.csv'
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(url)
+    })
+
+    function csvSafe(s=''){ if(s==null) s=''; return '"'+String(s).replace(/"/g,'""')+'"' }
+
+    clearBtn.addEventListener('click', ()=>{
+      if(!confirm('هل أنت متأكد من مسح كل البيانات؟')) return
+      localStorage.removeItem(STORAGE_KEY)
+      render()
+    })
+
+    // init
+    render()
+  </script>
+</body>
+</html>
